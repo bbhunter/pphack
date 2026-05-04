@@ -1,6 +1,8 @@
-// pphack - The Most Advanced Client-Side Prototype Pollution Scanner
-// This repository is under MIT License https://github.com/edoardottt/pphack/blob/main/LICENSE
+/*
+pphack - The Most Advanced Client-Side Prototype Pollution Scanner
 
+This repository is under MIT License https://github.com/edoardottt/pphack/blob/main/LICENSE
+*/
 package scan
 
 import (
@@ -34,7 +36,7 @@ func GetChromeOptions(r *Runner) []func(*chromedp.ExecAllocator) {
 }
 
 // GetChromeBrowser takes as input the chrome options and returns
-// the contexts with the associated cancel functions to use the
+// the context with the associated cancel functions to use the
 // headless chrome browser it creates.
 // Returns ecancel (exec allocator cancel), pctx (parent browser context),
 // and pcancel (parent context cancel).
@@ -46,7 +48,6 @@ func GetChromeBrowser(copts []func(*chromedp.ExecAllocator)) (context.CancelFunc
 	pctx, pcancel := chromedp.NewContext(ectx)
 
 	// Run an empty chromedp task to verify the browser starts successfully.
-	// If it fails, ecancel is called before Fatal to avoid leaking the allocator.
 	if err := chromedp.Run(pctx); err != nil {
 		ecancel()
 		gologger.Fatal().Msgf("error starting browser: %s", err.Error())
@@ -69,7 +70,7 @@ func buildHeaders(headers map[string]interface{}) chromedp.Tasks {
 
 // Scan is the core function that performs the prototype pollution scan.
 // It takes a parent browser context (pctx), runner config (r), optional HTTP
-// headers, the JavaScript payload (js), the original input value, and the
+// headers, the JavaScript payload (js), the original input value and the
 // fully constructed target URL.
 //
 // Flow:
@@ -90,21 +91,18 @@ func Scan(
 		resDetection []string
 	)
 
-	// Initialize result with the original input value and the constructed scan URL.
 	resultData := output.ResultData{
 		TargetURL: value,
 		ScanURL:   targetURL,
 	}
 
-	// Wrap the parent context with a per-scan timeout so hung pages
-	// don't block the scanner indefinitely.
+	// Wrap the parent context with a per-scan timeout to avoid blocking.
 	ctx, ctxCancel := context.WithTimeout(pctx, time.Second*time.Duration(r.Options.Timeout))
 	defer ctxCancel()
 
 	// Open a new Chrome tab scoped to the timeout context.
-	// tabCancel explicitly closes the tab when Scan returns,
+	// tabCancel explicitly closes the tab when Scan returns
 	// preventing tab accumulation across concurrent scans.
-	// Previously this cancel was silently dropped with _, causing a tab leak.
 	tabCtx, tabCancel := chromedp.NewContext(ctx)
 	defer tabCancel()
 
@@ -123,14 +121,8 @@ func Scan(
 		resultData.ScanError = errScan.Error()
 	}
 
-	// Trim and store the JS evaluation result.
-	// This value is reused in the exploit gate below to avoid a redundant TrimSpace call.
 	resultData.JSEvaluation = strings.TrimSpace(resScan)
 
-	// Early return guard: skip exploit phase entirely if:
-	// - exploit mode is off, OR
-	// - the scan itself errored (page unreachable, timeout, etc.), OR
-	// - the JS payload returned empty (no pollution detected).
 	if !r.Options.Exploit || errScan != nil || resultData.JSEvaluation == "" {
 		return resultData, nil
 	}
@@ -140,16 +132,12 @@ func Scan(
 	}
 
 	// Run fingerprinting as a separate, isolated task list.
-	// Previously the fingerprint eval was appended onto scanTasks, which caused
-	// the full task list (Navigate + JS eval + fingerprint) to re-run from scratch,
-	// re-navigating the page unnecessarily and potentially corrupting scan state.
 	fingerprintTasks := chromedp.Tasks{
 		chromedp.EvaluateAsDevTools(exploit.Fingerprint, &resDetection),
 	}
 
 	errDetection := chromedp.Run(tabCtx, fingerprintTasks)
 	if errDetection != nil {
-		// Log detection errors unconditionally - errors are not verbosity-dependent.
 		gologger.Error().Msg(errDetection.Error())
 		resultData.FingerprintError = errDetection.Error()
 	}
@@ -162,9 +150,6 @@ func Scan(
 		gologger.Info().Msg(fmt.Sprintf("Trying to exploit %s", value))
 	}
 
-	// Build exploit-phase headers separately using buildHeaders.
-	// Previously this was a duplicated inline block; now it uses the shared helper
-	// for consistency with the scan phase header handling.
 	exploitTasks := buildHeaders(headers)
 
 	result, errExploit := exploit.CheckExploit(
@@ -179,8 +164,6 @@ func Scan(
 	resultData.ExploitURLs = result
 
 	if errExploit != nil {
-		// Previously this field was incorrectly set to errDetection.Error(),
-		// masking the actual exploit error. Now correctly uses errExploit.
 		resultData.ExploitError = errExploit.Error()
 		gologger.Error().Msg(errExploit.Error())
 	}
