@@ -3,7 +3,7 @@
   <br>
 </h1>
 
-<h4 align="center">The Most Advanced Client-Side Prototype Pollution Scanner</h4>
+<h4 align="center">Advanced Client-Side Prototype Pollution Scanner</h4>
 
 <h6 align="center"> Coded with 💙 by edoardottt </h6>
 
