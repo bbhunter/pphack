@@ -1,5 +1,5 @@
 /*
-pphack - The Most Advanced Client-Side Prototype Pollution Scanner
+pphack - Advanced Client-Side Prototype Pollution Scanner
 
 This repository is under MIT License https://github.com/edoardottt/pphack/blob/main/LICENSE
 */
@@ -59,7 +59,7 @@ func ParseOptions() *Options {
 	options := &Options{}
 
 	flagSet := goflags.NewFlagSet()
-	flagSet.SetDescription(`The Most Advanced Client-Side Prototype Pollution Scanner.`)
+	flagSet.SetDescription(`Advanced Client-Side Prototype Pollution Scanner.`)
 
 	// Input.
 	flagSet.CreateGroup("input", "Input",

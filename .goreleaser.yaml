@@ -1,7 +1,7 @@
 release:
   header: |
     ## pphack {{ .Tag }} 🥳
-    *The Most Advanced Client-Side Prototype Pollution Scanner*
+    *Advanced Client-Side Prototype Pollution Scanner*
 
   footer: |
       If you encounter a problem, just open an [issue](https://github.com/edoardottt/pphack/issues)
